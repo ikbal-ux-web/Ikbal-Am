@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#F3F4F6" />
+    <title>Fall API - Alight Motion</title>
+    
+    <!-- Tailwind CSS for rapid structural styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Phosphor Icons (SVG-based) -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Google Fonts: Plus Jakarta Sans for that modern, clean look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = { 
+            theme: { 
+                extend: { 
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+                    colors: {
+                        miuix: {
+                            bg: '#F3F4F6',          // Soft gray background
+                            surface: '#FFFFFF',     // White cards
+                            primary: '#3482FF',     // HyperOS Blue
+                            primaryHover: '#2A68CC',
+                            textDark: '#1C1C1E',
+                            textMuted: '#8E8E93',
+                            border: '#E5E5EA',
+                            getBg: '#E5F0FF',       // Soft blue for GET
+                            getText: '#0055FF',
+                            postBg: '#E8F5E9',      // Soft green for POST
+                            postText: '#2E7D32'
+                        }
+                    },
+                    boxShadow: {
+                        'miuix': '0 8px 24px rgba(0, 0, 0, 0.04)',
+                        'miuix-hover': '0 12px 32px rgba(0, 0, 0, 0.08)'
+                    }
+                } 
+            } 
+        }
+    </script>
+
+    <style>
+        /* Base Setup & Scrollbar Hide */
+        body { 
+            background-color: #F3F4F6;
+            color: #1C1C1E;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-top: 80px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        ::-webkit-scrollbar { display: none !important; }
+
+        /* Miuix Glassmorphism Navbar */
+        .glass-nav {
+            position: fixed; top: 0; left: 0; width: 100%; z-index: 50;
+            background-color: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        /* Inputs (Soft HyperOS Style) */
+        .input-miuix {
+            background: #F2F2F7;
+            border: 2px solid transparent;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            outline: none;
+        }
+        .input-miuix:focus { 
+            background: #FFFFFF; 
+            border-color: #3482FF; 
+            box-shadow: 0 0 0 4px rgba(52, 130, 255, 0.15); 
+        }
+
+        /* Buttons (Pill shaped) */
+        .btn-miuix {
+            background-color: #3482FF; color: #FFFFFF;
+            font-weight: 600; border-radius: 999px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-miuix:hover { background-color: #2A68CC; transform: scale(0.98); }
+        .btn-miuix:active { transform: scale(0.95); }
+
+        .btn-secondary {
+            background-color: #F2F2F7; color: #1C1C1E;
+            font-weight: 600; border-radius: 999px;
+            transition: all 0.2s ease;
+        }
+        .btn-secondary:hover { background-color: #E5E5EA; transform: scale(0.98); }
+        .btn-secondary:active { transform: scale(0.95); }
+
+        /* API Cards (Squircles) */
+        .api-card {
+            background: #FFFFFF;
+            border-radius: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03); 
+            border: 1px solid rgba(0,0,0,0.02);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+        .api-card:hover { box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06); transform: translateY(-2px); }
+        
+        .api-header { padding: 20px 24px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; user-select: none; }
+        
+        .endpoint-body {
+            max-height: 0; overflow: hidden; opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .endpoint-body.open { max-height: 2500px; opacity: 1; border-top: 1px solid #F2F2F7; }
+        
+        .method-badge { font-size: 11px; font-weight: 800; padding: 6px 12px; border-radius: 99px; letter-spacing: 0.5px; }
+        .method-get { background: #E5F0FF; color: #0055FF; }
+        .method-post { background: #E8F5E9; color: #2E7D32; }
+
+        /* URL Copy Box */
+        .url-box {
+            background-color: #F8F9FA; border: 1px solid #E5E5EA;
+            border-radius: 16px; transition: all 0.2s ease;
+        }
+        .url-box:hover { border-color: #3482FF; }
+
+        /* Glassmorphism Toast Alert */
+        .toast {
+            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(100px) scale(0.9);
+            background: rgba(28, 28, 30, 0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            color: #FFFFFF; padding: 14px 28px; border-radius: 99px; 
+            font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 12px;
+            box-shadow: 0 16px 32px rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.1);
+            opacity: 0; transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 9999;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
+        
+        /* Smooth Spinner */
+        .loader {
+            width: 44px; height: 44px; border: 4px solid #E5E5EA;
+            border-top-color: #3482FF; border-radius: 50%;
+            animation: spin 0.8s cubic-bezier(0.6, 0.2, 0.4, 0.8) infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #loadingScreen {
+            position: fixed; inset: 0; background: #FFFFFF; z-index: 99999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="transition-opacity duration-500">
+        <div class="loader mb-6"></div>
+        <p class="font-bold text-miuix-textDark tracking-tight text-lg">Memuat Hub...</p>
+    </div>
+
+    <!-- Glassmorphism Top Navigation -->
+    <nav class="glass-nav h-[72px] flex items-center">
+        <div class="max-w-5xl w-full mx-auto px-6 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="bg-miuix-primary text-white p-2 rounded-xl">
+                    <i class="ph ph-lightning text-xl"></i>
+                </div>
+                <h1 class="font-extrabold text-xl text-miuix-textDark tracking-tight">Fall API</h1>
+            </div>
+            <button class="bg-gray-100 hover:bg-gray-200 text-gray-700 p-2.5 rounded-full transition-colors">
+                <i class="ph ph-user text-lg"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Workspace -->
+    <main class="max-w-4xl mx-auto px-5 w-full flex-grow flex flex-col pt-6">
+        
+        <!-- Header & Search -->
+        <header class="mb-10 text-center sm:text-left">
+            <h2 class="text-[32px] font-extrabold mb-3 text-miuix-textDark tracking-tight">am / activate</h2>
+            <p class="text-miuix-textMuted font-medium text-[15px] mb-8 max-w-2xl leading-relaxed mx-auto sm:mx-0">
+                Dokumentasi API Alight Motion Premium. Kotak URL otomatis diperbarui saat parameter diisi. Jalankan request langsung dari sini.
+            </p>
+            <div class="relative max-w-xl mx-auto sm:mx-0 group">
+                <i class="ph ph-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 text-xl group-focus-within:text-miuix-primary transition-colors"></i>
+                <input type="text" id="searchInput" class="input-miuix w-full py-4 pl-14 pr-6 rounded-[20px] text-[15px] font-medium placeholder-gray-400" placeholder="Cari endpoint (contoh: status)..." autocomplete="off">
+            </div>
+        </header>
+
+        <!-- Dynamic API List Container -->
+        <section id="apiList" class="mb-10"></section>
+
+        <!-- Empty State -->
+        <div id="noResults" class="hidden text-center py-20 flex-grow">
+            <div class="bg-gray-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-5">
+                <i class="ph ph-magnifying-glass-minus text-4xl text-gray-400"></i>
+            </div>
+            <h3 class="text-xl font-bold text-miuix-textDark">Endpoint tidak ditemukan</h3>
+            <p class="text-miuix-textMuted text-[15px] mt-2 mb-8">Coba gunakan kata kunci lain untuk mencari.</p>
+            <button id="clearSearchBtn" class="btn-secondary px-8 py-3.5 text-[15px]">Bersihkan Pencarian</button>
+        </div>
+
+        <!-- Footer Locked to Bottom -->
+        <footer class="mt-auto text-center pt-8 pb-8">
+            <p class="text-gray-400 font-medium text-[13px] tracking-wide">&copy; 2026 Am Api By @fallxpn. Unofficial &middot; Reverse Engineered.</p>
+        </footer>
+
+    </main>
+
+    <!-- Glassmorphism Toast Alert -->
+    <div id="toast" class="toast">
+        <i id="toast-icon" class="ph ph-check-circle text-2xl text-green-400"></i>
+        <span id="toast-message">Notifikasi</span>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        // Data API
+        const apiData = [
+            {
+                name: "Status Server",
+                method: "GET",
+                path: "/api/status",
+                desc: "Memeriksa status operasional server dan waktu aktif (uptime) sistem.",
+                params: []
+            },
+            {
+                name: "Send Magic Link",
+                method: "POST",
+                path: "/api/send-link",
+                desc: "Mengirimkan link login aktivasi ke email target tanpa memerlukan password.",
+                params: [
+                    { name: "email", type: "email", placeholder: "contoh: fall@email.com" }
+                ]
+            },
+            {
+                name: "Verify Link",
+                method: "POST",
+                path: "/api/verify-link",
+                desc: "Memverifikasi token oobCode yang disalin dari email untuk mendapatkan ID Token Premium.",
+                params: [
+                    { name: "email", type: "email", placeholder: "contoh: fall@email.com" },
+                    { name: "magicLink", type: "text", placeholder: "Masukkan URL penuh atau oobCode" }
+                ]
+            },
+            {
+                name: "Data Statistik",
+                method: "GET",
+                path: "/api/stats",
+                desc: "Mengambil data total dan harian jumlah aktivasi premium secara real-time.",
+                params: []
+            }
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderAPI(apiData);
+            setupSearch();
+            
+            // Hilangkan loader dengan efek Miuix yang mulus
+            setTimeout(() => {
+                const loader = document.getElementById('loadingScreen');
+                loader.style.opacity = '0';
+                setTimeout(() => loader.style.display = 'none', 500);
+            }, 800);
+        });
+
+        function renderAPI(data) {
+            const container = document.getElementById('apiList');
+            container.innerHTML = '';
+
+            data.forEach((item, index) => {
+                const methodClass = item.method === 'GET' ? 'method-get' : 'method-post';
+                const baseUrl = window.location.origin + item.path;
+
+                let inputsHtml = '';
+                item.params.forEach(param => {
+                    inputsHtml += `
+                        <div class="mb-5">
+                            <label class="block text-[13px] font-bold text-gray-700 mb-2 pl-1">${param.name} <span class="text-red-500">*</span></label>
+                            <input type="${param.type}" name="${param.name}" oninput="updateDynamicUrl(${index}, '${baseUrl}')" class="input-miuix w-full py-3.5 px-5 rounded-[16px] text-[15px]" placeholder="${param.placeholder}" required>
+                        </div>
+                    `;
+                });
+
+                const cardHtml = `
+                    <div class="api-card">
+                        <!-- Accordion Header -->
+                        <div class="api-header group" onclick="toggleAccordion(${index})">
+                            <div class="flex items-center gap-5">
+                                <span class="method-badge ${methodClass}">${item.method}</span>
+                                <div>
+                                    <h3 class="font-bold text-miuix-textDark text-lg group-hover:text-miuix-primary transition-colors">${item.name}</h3>
+                                    <p class="text-[13px] font-semibold text-gray-400 mt-0.5">${item.path}</p>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 p-2 rounded-full group-hover:bg-blue-50 transition-colors">
+                                <i id="icon-${index}" class="ph ph-caret-down text-gray-500 group-hover:text-miuix-primary text-xl transition-transform duration-300"></i>
+                            </div>
+                        </div>
+
+                        <!-- Accordion Body -->
+                        <div id="body-${index}" class="endpoint-body">
+                            <div class="p-6 pt-5">
+                                <p class="text-[14px] font-medium text-gray-600 mb-6 leading-relaxed px-1">${item.desc}</p>
+                                
+                                <!-- URL & Copy Bar (Skyzo Dynamic Style) -->
+                                <div class="url-box flex items-center p-2 mb-8">
+                                    <code class="flex-1 px-4 text-[13px] font-mono font-semibold text-gray-700 overflow-x-auto whitespace-nowrap scrollbar-hide" id="url-${index}">${baseUrl}</code>
+                                    <button type="button" onclick="copyDynamicUrl('url-${index}')" class="bg-white hover:bg-miuix-primary text-gray-600 hover:text-white border border-gray-200 p-2.5 rounded-xl transition-all shadow-sm" title="Salin Endpoint">
+                                        <i class="ph ph-copy text-lg"></i>
+                                    </button>
+                                </div>
+
+                                <form id="form-${index}">
+                                    ${inputsHtml}
+                                    <div class="flex gap-4 mt-8">
+                                        <button type="button" onclick="executeReq(${index}, '${item.method}', '${baseUrl}')" class="btn-miuix py-3.5 px-6 text-[15px] flex items-center gap-2 flex-1 justify-center">
+                                            <i class="ph ph-paper-plane-tilt text-lg"></i> Jalankan API
+                                        </button>
+                                        <button type="button" onclick="resetForm(${index}, '${baseUrl}')" class="btn-secondary py-3.5 px-5 text-[15px]" title="Reset Input">
+                                            <i class="ph ph-arrow-counter-clockwise text-lg"></i>
+                                        </button>
+                                    </div>
+                                </form>
+
+                                <!-- Response Box -->
+                                <div id="response-box-${index}" class="mt-8 hidden">
+                                    <div class="flex justify-between items-center mb-3 px-2">
+                                        <span class="text-[12px] font-bold text-gray-500 uppercase tracking-wider">Response Data</span>
+                                        <span id="time-${index}" class="text-[11px] font-bold text-miuix-primary bg-blue-50 px-2.5 py-1 rounded-md"></span>
+                                    </div>
+                                    <div class="bg-[#1C1C1E] rounded-[20px] p-5 overflow-x-auto shadow-inner">
+                                        <pre id="output-${index}" class="text-[13px] font-mono text-[#34D399] whitespace-pre-wrap break-all leading-relaxed"></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', cardHtml);
+            });
+        }
+
+        // Skyzo Style Dynamic URL Updater
+        function updateDynamicUrl(index, baseUrl) {
+            const form = document.getElementById(`form-${index}`);
+            const urlDisplay = document.getElementById(`url-${index}`);
+            const params = new URLSearchParams();
+            
+            form.querySelectorAll('input').forEach(input => {
+                if (input.value.trim()) params.append(input.name, input.value.trim());
+            });
+            
+            const queryString = params.toString();
+            urlDisplay.textContent = queryString ? `${baseUrl}?${queryString}` : baseUrl;
+        }
+
+        function toggleAccordion(index) {
+            const body = document.getElementById(`body-${index}`);
+            const icon = document.getElementById(`icon-${index}`);
+            
+            if (body.classList.contains('open')) {
+                body.classList.remove('open');
+                icon.style.transform = 'rotate(0deg)';
+            } else {
+                document.querySelectorAll('.endpoint-body.open').forEach(el => el.classList.remove('open'));
+                document.querySelectorAll('.ph-caret-down').forEach(el => el.style.transform = 'rotate(0deg)');
+                body.classList.add('open');
+                icon.style.transform = 'rotate(180deg)';
+            }
+        }
+
+        async function executeReq(index, method, baseUrl) {
+            const form = document.getElementById(`form-${index}`);
+            const resBox = document.getElementById(`response-box-${index}`);
+            const output = document.getElementById(`output-${index}`);
+            const timeBadge = document.getElementById(`time-${index}`);
+            
+            let payload = {};
+            let isValid = true;
+            
+            form.querySelectorAll('input').forEach(input => {
+                if (!input.value.trim()) {
+                    isValid = false;
+                    input.classList.add('border-red-400', 'bg-red-50');
+                    showToast(`Parameter ${input.name} wajib diisi!`, 'error');
+                } else {
+                    input.classList.remove('border-red-400', 'bg-red-50');
+                    payload[input.name] = input.value.trim();
+                }
+            });
+
+            if (!isValid) return;
+
+            resBox.classList.remove('hidden');
+            output.innerHTML = '<span class="text-gray-400 flex items-center gap-2"><i class="ph ph-spinner-gap animate-spin text-xl"></i> Menghubungi server...</span>';
+            timeBadge.textContent = '...';
+
+            const start = Date.now();
+            
+            try {
+                // Di Vercel, kita bisa hit endpoint pake relative path kalau index.html di root
+                // Tapi window.location.origin juga 100% aman asal nama domain bener
+                let fetchOptions = { method: method, headers: { 'Accept': 'application/json' } };
+                
+                // Set JSON body untuk request POST
+                if (method !== 'GET') {
+                    fetchOptions.headers['Content-Type'] = 'application/json';
+                    fetchOptions.body = JSON.stringify(payload);
+                }
+
+                // Hit API yang ada di server/vercel kamu
+                const response = await fetch(baseUrl, fetchOptions);
+                timeBadge.textContent = `${Date.now() - start}ms`;
+
+                const contentType = response.headers.get("content-type");
+                let data;
+                if (contentType && contentType.indexOf("application/json") !== -1) {
+                    data = await response.json();
+                    output.innerHTML = syntaxHighlight(JSON.stringify(data, null, 2));
+                } else {
+                    data = await response.text();
+                    output.textContent = data;
+                }
+
+                if (response.ok) {
+                    showToast('Request Berhasil Dikirim', 'success');
+                } else {
+                    showToast(`Error: HTTP ${response.status}`, 'error');
+                    output.classList.replace('text-[#34D399]', 'text-red-400');
+                }
+            } catch (error) {
+                timeBadge.textContent = 'FAIL';
+                output.className = 'text-[13px] font-mono text-red-400 whitespace-pre-wrap break-all leading-relaxed';
+                output.textContent = `Gagal terhubung ke Server Vercel.\nDetail:\n${error.message}`;
+                showToast('Koneksi Gagal', 'error');
+            }
+        }
+
+        function setupSearch() {
+            const input = document.getElementById('searchInput');
+            const clearBtn = document.getElementById('clearSearchBtn');
+            
+            input.addEventListener('input', (e) => {
+                const term = e.target.value.toLowerCase();
+                const filtered = apiData.filter(item => 
+                    item.name.toLowerCase().includes(term) || item.path.toLowerCase().includes(term)
+                );
+                
+                if (filtered.length === 0) {
+                    document.getElementById('apiList').innerHTML = '';
+                    document.getElementById('noResults').classList.remove('hidden');
+                } else {
+                    document.getElementById('noResults').classList.add('hidden');
+                    renderAPI(filtered);
+                }
+            });
+
+            clearBtn.addEventListener('click', () => {
+                input.value = '';
+                document.getElementById('noResults').classList.add('hidden');
+                renderAPI(apiData);
+            });
+        }
+
+        function resetForm(index, baseUrl) {
+            document.getElementById(`form-${index}`).reset();
+            document.getElementById(`response-box-${index}`).classList.add('hidden');
+            document.getElementById(`url-${index}`).textContent = baseUrl;
+            document.querySelectorAll(`#form-${index} input`).forEach(i => i.classList.remove('border-red-400', 'bg-red-50'));
+        }
+
+        function copyDynamicUrl(elementId) {
+            const textToCopy = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showToast('Endpoint URL Tersalin!', 'success');
+            }).catch(() => {
+                showToast('Gagal menyalin', 'error');
+            });
+        }
+
+        let toastTimeout;
+        function showToast(msg, type) {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            document.getElementById('toast-message').textContent = msg;
+            
+            if (type === 'error') {
+                icon.className = 'ph ph-warning-circle text-2xl text-red-400';
+            } else {
+                icon.className = 'ph ph-check-circle text-2xl text-green-400';
+            }
+
+            toast.classList.add('show');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        }
+
+        function syntaxHighlight(json) {
+            json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+                let cls = 'text-blue-300';
+                if (/^"/.test(match)) {
+                    if (/:$/.test(match)) cls = 'text-[#3482FF]'; 
+                } else if (/true|false/.test(match)) {
+                    cls = 'text-purple-400'; 
+                } else if (/null/.test(match)) {
+                    cls = 'text-gray-400'; 
+                } else {
+                    cls = 'text-orange-400'; 
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            });
+        }
+    </script>
+</body>
+</html>
